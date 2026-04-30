@@ -10,13 +10,22 @@ from copilot.config import SETTINGS
 
 
 def resolve_stl_path(row: pd.Series | dict[str, object]) -> Path | None:
-    value = dict(row).get("stl_path")
-    if not value or pd.isna(value):
+    """Resolve STL path from ingested metadata, or conventional per-run download layout."""
+    data = dict(row)
+    value = data.get("stl_path")
+    if value and not pd.isna(value):
+        path = Path(str(value))
+        if not path.is_absolute():
+            path = SETTINGS.project_root / path
+        if path.exists():
+            return path
+
+    run_key = data.get("run_id")
+    if run_key is None or pd.isna(run_key):
         return None
-    path = Path(str(value))
-    if not path.is_absolute():
-        path = SETTINGS.project_root / path
-    return path if path.exists() else None
+    run_id = int(run_key)
+    conventional = SETTINGS.data_raw / "drivaerml" / f"run_{run_id}" / f"drivaer_{run_id}.stl"
+    return conventional if conventional.exists() else None
 
 
 def load_mesh(path: Path):
@@ -26,18 +35,34 @@ def load_mesh(path: Path):
 
 
 def render_mesh_preview(path: Path, out_path: Path | None = None) -> Path | None:
+    """Raster preview for Streamlit. Trimesh uses pyglet when available; otherwise VTK via PyVista."""
+    out = out_path or (SETTINGS.artifacts_dir / "screenshots" / f"{path.stem}_preview.png")
+    out.parent.mkdir(parents=True, exist_ok=True)
+
     try:
         mesh = load_mesh(path)
         scene = mesh.scene()
         png = scene.save_image(resolution=(900, 600))
+        if png:
+            out.write_bytes(png)
+            return out
+    except Exception:
+        pass
+
+    try:
+        import pyvista as pv
+
+        pv_mesh = pv.read(str(path))
+        plotter = pv.Plotter(off_screen=True, window_size=(900, 600))
+        plotter.set_background("white")
+        plotter.add_mesh(pv_mesh, color="#c0c0c0", smooth_shading=True)
+        plotter.reset_camera()
+        plotter.camera.zoom(1.05)
+        plotter.screenshot(str(out))
+        plotter.close()
+        return out if out.exists() and out.stat().st_size > 0 else None
     except Exception:
         return None
-    if png is None:
-        return None
-    out = out_path or (SETTINGS.artifacts_dir / "screenshots" / f"{path.stem}_preview.png")
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_bytes(png)
-    return out
 
 
 def build_envelope_scaffold(parameters: dict[str, float], candidate_id: str) -> dict[str, str]:

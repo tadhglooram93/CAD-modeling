@@ -167,14 +167,14 @@ def train(
     else:
         joblib.dump(xgb, model_path)
     joblib.dump({"mean": fitted["mean"], "ridge": fitted["ridge"]}, SETTINGS.models_dir / "baselines.joblib")
-    schema.save(SETTINGS.models_dir / "feature_schema.json")
+    schema.save(model_path.parent / "feature_schema.json")
     write_feature_dictionary()
 
     xgb_preds = xgb.predict(x_test)
     _save_predicted_vs_actual(y_test, xgb_preds, SETTINGS.figures_dir / "predicted_vs_actual.png")
     _save_residuals(y_test, xgb_preds, SETTINGS.figures_dir / "residuals.png")
     _save_feature_importance(xgb, list(features.columns), SETTINGS.figures_dir / "feature_importance.png")
-    OODProfile.fit(features).save(SETTINGS.models_dir / "ood_profile.json")
+    OODProfile.fit(features).save(model_path.parent / "ood_profile.json")
     try:
         from copilot.explain import save_shap_summary
 

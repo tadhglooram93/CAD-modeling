@@ -109,6 +109,17 @@ python -m copilot.search --baseline-run-id 42 --num-candidates 1000
 streamlit run app/streamlit_app.py
 ```
 
+### Geometry preview (optional STL mesh)
+
+Tabular training uses aggregate CSVs only. To show the 3D mesh preview for a specific run, download that run’s STL (large files—fetch only what you need):
+
+```bash
+# Example: run ID 42 only
+bash scripts/download_drivaerml.sh --per-run --with-stl --run-start 42 --run-end 42
+```
+
+Files are written to `data/raw/drivaerml/run_<id>/drivaer_<id>.stl`. The app looks there even if you ingested from aggregate CSVs; re-running ingestion is optional.
+
 ## Limitations
 
 - The feasibility checks are simplified, configurable proxy rules.

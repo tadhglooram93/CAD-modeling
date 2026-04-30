@@ -66,7 +66,7 @@ def evaluate_ood(
             minmax_violations.append(
                 {"feature": column, "value": value, "train_min": low, "train_max": high}
             )
-        mahalanobis_distance = float(
+    mahalanobis_distance = float(
         np.sqrt(
             sum(
                 ((float(row[column]) - profile.mean[column]) / profile.std[column]) ** 2

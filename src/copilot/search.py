@@ -66,6 +66,7 @@ def search_candidates(
     top_n: int = 3,
     model_path: Path = SETTINGS.models_dir / "xgboost_cd_model.json",
     schema_path: Path = SETTINGS.models_dir / "feature_schema.json",
+    seed_row: pd.Series | dict[str, object] | None = None,
 ) -> list[Candidate]:
     SETTINGS.ensure_directories()
     if "run_id" not in design_table.columns:
@@ -78,7 +79,9 @@ def search_candidates(
     model = load_model(model_path)
     rng = np.random.default_rng(SETTINGS.random_state)
     baseline = add_derived_features(pd.DataFrame([matches.iloc[0].to_dict()])).iloc[0]
-    baseline_pred = _predict_row(baseline, model, schema)
+    start = pd.Series(seed_row).copy() if seed_row is not None else baseline.copy()
+    start = add_derived_features(pd.DataFrame([start.to_dict()])).iloc[0]
+    starting_pred = _predict_row(start, model, schema)
     columns = _search_columns(design_table)
     if not columns:
         raise ValueError("No numeric geometry columns were found for candidate perturbation.")
@@ -90,7 +93,7 @@ def search_candidates(
         dataset_version=str(baseline.get("dataset_version", SETTINGS.dataset_version)),
     )
     for _ in range(num_candidates):
-        row = baseline.copy()
+        row = start.copy()
         deltas: dict[str, float] = {}
         for column in columns:
             value = float(row[column])
@@ -111,8 +114,8 @@ def search_candidates(
             candidate_id=candidate_id,
             baseline_run_id=baseline_run_id,
             predicted_cd=predicted,
-            baseline_predicted_cd=baseline_pred,
-            estimated_cd_improvement=baseline_pred - predicted,
+            baseline_predicted_cd=starting_pred,
+            estimated_cd_improvement=starting_pred - predicted,
             score=score,
             feasibility_status=status,
             parameters={column: float(candidate_row[column]) for column in columns},
