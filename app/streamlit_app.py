@@ -358,14 +358,17 @@ def main() -> None:
                 parameter_delta_table(baseline, st.session_state.edited_row, active_columns),
                 width="stretch",
             )
-
-        action_cols = st.columns([1, 1, 4])
-        if action_cols[0].button("Reset to baseline"):
-            reset_edited_design(baseline)
-            st.rerun()
-        if action_cols[1].button("Evaluate design", type="primary"):
-            evaluate_design(baseline, st.session_state.edited_row)
-            st.success("Design evaluated. Results appear in the section below.")
+            _, action_mid, _ = st.columns([1, 3, 1])
+            with action_mid:
+                r_btn, e_btn = st.columns(2)
+                with r_btn:
+                    if st.button("Reset to baseline", use_container_width=True, key="reset_baseline_btn"):
+                        reset_edited_design(baseline)
+                        st.rerun()
+                with e_btn:
+                    if st.button("Evaluate design", type="primary", use_container_width=True, key="evaluate_design_btn"):
+                        evaluate_design(baseline, st.session_state.edited_row)
+                        st.success("Design evaluated. Results appear in the section below.")
 
         st.divider()
         st.subheader("Results")
