@@ -44,8 +44,25 @@ def test_width_height_and_area_rules_fail_when_outside_limits() -> None:
 
 def test_wheelbase_roof_and_delta_rules() -> None:
     assert result_for("PKG_005", geo_param_wheelbase=2.0).severity == "fail"
-    assert result_for("PKG_006", geo_param_roof_height=1.0).severity == "fail"
     assert result_for("PKG_007", param_delta_norm_geo_param_length=3.0).severity == "fail"
+
+
+def test_pkg005_info_when_no_wheelbase_metric_on_signed_overhangs() -> None:
+    """DrivAerML-style signed parameters: proxy wheelbase can be undefined."""
+    row = pd.Series(
+        {
+            "geo_param_vehicle_length": 17.3,
+            "geo_param_front_overhang": -130.0,
+            "geo_param_rear_overhang": -100.0,
+            "geo_param_vehicle_height": 1.4,
+            "geo_param_vehicle_width": 1.8,
+            "geo_ref_reference_area": 2.5,
+            "param_delta_norm_geo_param_length": 0.0,
+        }
+    )
+    results = evaluate_rules(row, row, FeasibilityConfig())
+    pkg005 = next(result for result in results if result.rule_id == "PKG_005")
+    assert pkg005.severity == "info"
 
 
 def test_rule_result_ranges_and_overall_status() -> None:

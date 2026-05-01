@@ -22,7 +22,7 @@ Primary target: drag coefficient (`cd`) from the processed design table. The ing
 
 ## Features
 
-Features include numeric geometry parameters plus derived ratios and proxy package features documented in `reports/feature_dictionary.md`.
+Features include numeric geometry parameters plus derived ratios and proxy package features documented in `reports/feature_dictionary.md`. Simulation coefficients other than the prediction target (`cd`)—for example lift and side-force coefficients (`cl`, `cs`)—are never used as model inputs.
 
 ## Train/Test Split
 

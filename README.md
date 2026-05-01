@@ -41,7 +41,7 @@ The XGBoost model is only used in the demo when it improves on the trivial and l
 
 ## Feasibility Rules
 
-The feasibility engine applies educational proxy package rules for length, width, height, frontal area drift, wheelbase ratio, hood/roof envelope, and normalized parameter deltas.
+The feasibility engine applies educational proxy package rules for length, width, height, frontal area drift, wheelbase-to-length change versus baseline, and normalized parameter deltas.
 
 These are educational proxy rules used to demonstrate package-aware AI workflows. They are not OEM hardpoint checks, legal compliance checks, or production vehicle package validation.
 

@@ -20,9 +20,7 @@ class FeasibilityConfig(BaseModel):
     width_pct: float = 0.03
     height_pct: float = 0.04
     frontal_area_increase_pct: float = 0.03
-    wheelbase_to_length_min: float = 0.52
-    wheelbase_to_length_max: float = 0.68
-    hood_roof_drop_pct: float = 0.03
+    wheelbase_delta_pct: float = 0.05
     max_normalized_parameter_delta: float = 2.5
     warning_fraction: float = 0.8
 
@@ -53,6 +51,19 @@ def _get(row: pd.Series, *tokens: str) -> float | None:
 def _severity(value: float, low: float, high: float, warning_fraction: float) -> Severity:
     if value < low or value > high:
         return "fail"
+    # Upper bound only (low unbounded): warn when close to failing high.
+    if low == float("-inf") and high != float("inf"):
+        band = high - max(abs(high), 1e-9) * (1.0 - warning_fraction)
+        return "warning" if value >= band else "info"
+    # Lower bound only (high unbounded): fail below `low`; warn in a thin band just above the floor.
+    if high == float("inf") and low != float("-inf"):
+        margin = (
+            abs(low) * (1.0 - warning_fraction)
+            if low < 0
+            else max(1.0 - low, low * 0.05, 1e-9) * (1.0 - warning_fraction)
+        )
+        upper = low + margin
+        return "warning" if low <= value <= upper else "info"
     if low in (float("-inf"), float("inf")) or high in (float("-inf"), float("inf")):
         return "info"
     if low == 0:
@@ -182,40 +193,43 @@ def evaluate_rules(
         )
     )
 
-    wbl = _get(candidate_row, "wheelbase_to_length")
-    results.append(
-        _bounded_rule(
-            "PKG_005",
-            wbl,
-            cfg.wheelbase_to_length_min,
-            cfg.wheelbase_to_length_max,
-            "Wheelbase-to-length ratio must stay in a plausible package range.",
-            "Adjust wheelbase or overall length to return to the configured package envelope.",
-            cfg.warning_fraction,
+    wbl_c = _get(candidate_row, "wheelbase_to_length")
+    wbl_b = _get(baseline_row, "wheelbase_to_length")
+    if (
+        wbl_c is None
+        or pd.isna(wbl_c)
+        or wbl_b is None
+        or pd.isna(wbl_b)
+        or wbl_b == 0
+    ):
+        results.append(
+            RuleResult(
+                rule_id="PKG_005",
+                severity="info",
+                metric_value=float("nan"),
+                allowed_range=(-cfg.wheelbase_delta_pct, cfg.wheelbase_delta_pct),
+                explanation=(
+                    "Wheelbase-to-length delta skipped: metric unavailable for candidate or baseline "
+                    "(missing wheelbase / unusable overhang proxy)."
+                ),
+                recommendation=(
+                    "Supply wheelbase or consistent length/overhang geometry, or rely on other package rules."
+                ),
+            )
         )
-    )
-
-    roof_candidate = _get(candidate_row, "roof", "height")
-    roof_baseline = _get(baseline_row, "roof", "height")
-    hood_candidate = _get(candidate_row, "hood", "height")
-    hood_baseline = _get(baseline_row, "hood", "height")
-    min_roof_ratio = 1.0 - cfg.hood_roof_drop_pct
-    roof_ratio = roof_candidate / roof_baseline if roof_candidate is not None and roof_baseline else None
-    hood_ratio = hood_candidate / hood_baseline if hood_candidate is not None and hood_baseline else None
-    envelope_ratio = min(value for value in (roof_ratio, hood_ratio) if value is not None) if any(
-        value is not None for value in (roof_ratio, hood_ratio)
-    ) else None
-    results.append(
-        _bounded_rule(
-            "PKG_006",
-            envelope_ratio,
-            min_roof_ratio,
-            float("inf"),
-            "Hood/roof height proxy must not fall below the baseline envelope tolerance.",
-            "Raise hood or roof guide surfaces, or document why the envelope change is acceptable.",
-            cfg.warning_fraction,
+    else:
+        delta_wbl = (wbl_c - wbl_b) / abs(wbl_b)
+        results.append(
+            _bounded_rule(
+                "PKG_005",
+                delta_wbl,
+                -cfg.wheelbase_delta_pct,
+                cfg.wheelbase_delta_pct,
+                "Wheelbase-to-length delta vs baseline must stay within the configured band.",
+                "Adjust wheelbase or overall length toward the baseline proportion.",
+                cfg.warning_fraction,
+            )
         )
-    )
 
     delta_columns = [column for column in candidate_row.index if column.startswith("param_delta_norm_")]
     max_delta = (

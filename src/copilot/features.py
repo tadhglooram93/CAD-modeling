@@ -11,6 +11,23 @@ from pydantic import BaseModel, Field
 
 from copilot.config import SETTINGS
 
+# Force coefficients only known after simulation — never use as Cd covariates (unlike geometry).
+_FORBIDDEN_DRAG_COVARIATE_TAILS = frozenset({"cl", "cs"})
+
+
+def _final_token(column: str) -> str:
+    return column.rsplit("_", 1)[-1]
+
+
+def _is_forbidden_drag_covariate(column: str) -> bool:
+    """True if this column must not be an input feature when predicting Cd."""
+    if column in _FORBIDDEN_DRAG_COVARIATE_TAILS:
+        return True
+    if column.startswith("param_delta_norm_"):
+        remainder = column.removeprefix("param_delta_norm_")
+        return _final_token(remainder) in _FORBIDDEN_DRAG_COVARIATE_TAILS
+    return False
+
 
 class FeatureSchema(BaseModel):
     version: str = SETTINGS.feature_schema_version
@@ -53,7 +70,7 @@ def add_derived_features(frame: pd.DataFrame, baseline_run_id: int | None = None
     length_col = find_column(result, "length")
     width_col = find_column(result, "width")
     height_col = find_column(result, "height")
-    wheelbase_col = find_column(result, "wheelbase")
+    wheelbase_col = find_column(result, "wheelbase") or find_column(result, "wheel", "base")
     hood_col = find_column(result, "hood", "height")
     roof_col = find_column(result, "roof", "height")
     rear_slope_col = find_column(result, "rear", "slope")
@@ -67,6 +84,15 @@ def add_derived_features(frame: pd.DataFrame, baseline_run_id: int | None = None
         result["wheelbase_to_length"] = _safe_ratio(
             _numeric(result, wheelbase_col), _numeric(result, length_col)
         )
+    elif length_col:
+        front_oh = find_column(result, "front", "overhang")
+        rear_oh = find_column(result, "rear", "overhang")
+        if front_oh and rear_oh:
+            length_numeric = _numeric(result, length_col)
+            wb_est = length_numeric - _numeric(result, front_oh).abs() - _numeric(result, rear_oh).abs()
+            positive = wb_est > 0
+            result["wheelbase_proxy"] = wb_est.where(positive, np.nan)
+            result["wheelbase_to_length"] = _safe_ratio(result["wheelbase_proxy"], length_numeric)
     if frontal_area_col:
         result["frontal_area_proxy"] = _numeric(result, frontal_area_col)
     elif width_col and height_col:
@@ -78,8 +104,11 @@ def add_derived_features(frame: pd.DataFrame, baseline_run_id: int | None = None
     if rear_slope_col:
         result["rear_slope_proxy"] = _numeric(result, rear_slope_col)
 
-    if length_col and wheelbase_col:
-        remaining = _numeric(result, length_col) - _numeric(result, wheelbase_col)
+    effective_wheelbase_col = wheelbase_col
+    if effective_wheelbase_col is None and "wheelbase_proxy" in result.columns:
+        effective_wheelbase_col = "wheelbase_proxy"
+    if length_col and effective_wheelbase_col:
+        remaining = _numeric(result, length_col) - _numeric(result, effective_wheelbase_col)
         result["overhang_total_proxy"] = remaining
         result["overhang_front_proxy"] = remaining / 2.0
         result["overhang_rear_proxy"] = remaining / 2.0
@@ -96,6 +125,8 @@ def add_derived_features(frame: pd.DataFrame, baseline_run_id: int | None = None
             stds = result[numeric_sources].std(numeric_only=True).replace(0, np.nan)
             for column in numeric_sources:
                 if column in baseline.index:
+                    if _final_token(column) in _FORBIDDEN_DRAG_COVARIATE_TAILS:
+                        continue
                     result[f"param_delta_norm_{column}"] = (
                         _numeric(result, column) - float(baseline[column])
                     ) / float(stds[column])
@@ -115,6 +146,8 @@ def select_feature_columns(frame: pd.DataFrame, target_column: str = "cd") -> li
         if column in excluded:
             continue
         if column.startswith(excluded_prefixes):
+            continue
+        if _is_forbidden_drag_covariate(column):
             continue
         candidates.append(column)
     return candidates
@@ -153,7 +186,7 @@ This file documents the derived proxy features used by the XGBoost drag surrogat
 | --- | --- |
 | `length_to_width` | Overall length divided by width. |
 | `height_to_width` | Overall height divided by width. |
-| `wheelbase_to_length` | Wheelbase divided by length. |
+| `wheelbase_to_length` | Wheelbase divided by length when a wheelbase column exists; otherwise estimated from length minus absolute front and rear overhangs when that estimate is positive. |
 | `frontal_area_proxy` | Reference/frontal area if available, otherwise width times height. |
 | `roof_height_proxy` | Roof height parameter when available. |
 | `hood_height_proxy` | Hood height parameter when available. |
@@ -161,7 +194,9 @@ This file documents the derived proxy features used by the XGBoost drag surrogat
 | `overhang_total_proxy` | Length minus wheelbase. |
 | `overhang_front_proxy` | Half of total overhang proxy. |
 | `overhang_rear_proxy` | Half of total overhang proxy. |
-| `param_delta_norm_*` | Candidate or run delta from a selected baseline, scaled by train-set standard deviation. |
+| `param_delta_norm_*` | Candidate or run delta from a selected baseline, scaled by train-set standard deviation. Not emitted for simulation coefficients (`cl`, `cs`). |
+
+Note: Drag prediction uses geometry (and related proxies) only. Lift/side coefficients (`cl`, `cs`) are excluded from inputs because they are known only after simulation, like `cd`.
 
 These features are simplified engineering proxies and should not be read as official package
 or homologation metrics.
