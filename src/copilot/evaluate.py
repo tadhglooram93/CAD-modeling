@@ -35,6 +35,25 @@ def prepare_features(frame: pd.DataFrame, schema: FeatureSchema) -> pd.DataFrame
     return features.fillna(features.median(numeric_only=True)).fillna(0.0)
 
 
+def load_holdout_surrogate_rmse(metrics_path: Path = SETTINGS.models_dir / "metrics.json") -> float | None:
+    """Approximate prediction uncertainty: hold-out RMSE (or MAE fallback) for the trained surrogate."""
+    if not metrics_path.exists():
+        return None
+    try:
+        data = json.loads(metrics_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    models = data.get("models") or {}
+    surrogate = models.get("xgboost")
+    if not isinstance(surrogate, dict):
+        return None
+    if "rmse" in surrogate:
+        return float(surrogate["rmse"])
+    if "mae" in surrogate:
+        return float(surrogate["mae"])
+    return None
+
+
 def load_model_and_predict(
     frame: pd.DataFrame,
     model_path: Path = SETTINGS.models_dir / "xgboost_cd_model.json",
