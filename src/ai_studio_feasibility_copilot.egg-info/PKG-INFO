@@ -1,0 +1,149 @@
+Metadata-Version: 2.4
+Name: ai-studio-feasibility-copilot
+Version: 0.1.0
+Summary: Portfolio ML/CAD copilot for vehicle shape feasibility exploration.
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pandas
+Requires-Dist: numpy
+Requires-Dist: scikit-learn
+Requires-Dist: xgboost
+Requires-Dist: matplotlib
+Requires-Dist: trimesh
+Requires-Dist: pyglet>=2
+Requires-Dist: pyvista
+Requires-Dist: streamlit
+Requires-Dist: pydantic
+Requires-Dist: joblib
+Requires-Dist: pyarrow
+Requires-Dist: PyYAML
+Requires-Dist: huggingface_hub
+Requires-Dist: shap
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+
+# AI Studio Feasibility Copilot
+
+This project is a portfolio demonstration of how AI/ML can support automotive studio engineering workflows. It combines open automotive CFD geometry data, an XGBoost aerodynamic surrogate model, simplified package-aware feasibility checks, and a lightweight interactive UI for exploring vehicle shape edits against a baseline.
+
+The goal is not to replace CFD, CATIA/3DX package validation, regulatory checks, or production studio engineering review. The goal is to show a traceable AI-assisted workflow from open vehicle geometry data to fast drag prediction and transparent feasibility warnings.
+
+## Why It Matters
+
+Generic AI-generated 3D shapes are rarely engineering-usable by themselves. Studio engineering workflows need data pedigree, reproducible models, package-style constraints, clear assumptions, and reviewable outputs. This project demonstrates that bridge in a compact form.
+
+## Quick Start
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+
+bash scripts/download_drivaerml.sh --aggregate
+python -m copilot.data_ingest --raw-dir data/raw/drivaerml --out data/processed/design_table.parquet
+python -m copilot.train_xgboost --data data/processed/design_table.parquet --target cd
+streamlit run app/streamlit_app.py
+```
+
+## Dataset
+
+The MVP uses DrivAerML from Hugging Face (`neashton/drivaerml`). The default download path fetches the aggregate CSV files needed for tabular surrogate modeling. Per-run STL downloads are optional and should be limited to a small subset for visualization.
+
+Large volume and boundary files are intentionally excluded from the MVP.
+
+## Modeling
+
+The training pipeline compares three models:
+
+- Mean predictor
+- Ridge regression
+- XGBoost regressor
+
+The XGBoost model is only used in the demo when it improves on the trivial and linear baselines. Metrics and figures are saved under `models/` and `reports/figures/`.
+
+## Feasibility Rules
+
+The feasibility engine applies educational proxy package rules for length, width, height, frontal area drift, wheelbase-to-length change versus baseline, and normalized parameter deltas.
+
+These are educational proxy rules used to demonstrate package-aware AI workflows. They are not OEM hardpoint checks, legal compliance checks, or production vehicle package validation.
+
+## Demo
+
+The Streamlit app lets a reviewer:
+
+- Select a curated baseline vehicle run
+- View bundled geometry preview images (pre-rendered PNGs) and surrogate predictions
+- Edit parameters with sliders and inspect feasibility outcomes
+
+Screenshots and demo media belong in `artifacts/screenshots/` and `reports/figures/demo.gif`.
+
+## Repository Structure
+
+```text
+src/copilot/
+  data_ingest.py      # DrivAerML CSV scanning and manifest creation
+  features.py         # Derived geometry and proxy package features
+  train_xgboost.py    # Mean, ridge, and XGBoost model training
+  evaluate.py         # Prediction and evaluation helpers
+  feasibility.py      # Transparent proxy package rule engine
+  geometry.py         # STL preview helpers
+  lineage.py          # Artifact hashes and refs for ingested data
+app/
+  streamlit_app.py    # Interactive copilot demo
+reports/
+  model_card.md
+  feasibility_rules.md
+```
+
+## Local Workflow
+
+1. Download a small tabular subset:
+
+```bash
+bash scripts/download_drivaerml.sh --aggregate
+```
+
+2. Build the processed design table:
+
+```bash
+python -m copilot.data_ingest --raw-dir data/raw/drivaerml --out data/processed/design_table.parquet
+```
+
+3. Train the surrogate:
+
+```bash
+python -m copilot.train_xgboost --data data/processed/design_table.parquet --target cd
+```
+
+4. Launch the demo:
+
+```bash
+streamlit run app/streamlit_app.py
+```
+
+### Geometry preview (bundled PNGs)
+
+The Streamlit demo shows **static PNGs** under `assets/demo_vehicle_previews/` (one per curated `run_id`), committed to git—no STL download, VTK, or OpenGL at runtime (**Streamlit Community Cloud–friendly**).
+
+Generate or refresh images locally (uses Hugging Face once per mesh), then commit:
+
+```bash
+python scripts/export_demo_vehicle_previews.py
+```
+
+See `assets/demo_vehicle_previews/README.md`.
+
+For non-demo tooling you can still fetch STL files into `data/raw/drivaerml/` with:
+
+```bash
+bash scripts/download_drivaerml.sh --per-run --with-stl --run-start 42 --run-end 42
+```
+
+## Limitations
+
+- The feasibility checks are simplified, configurable proxy rules.
+- The XGBoost model is a fast directional surrogate, not a CFD solver.
+- Edited designs are tabular parameter perturbations; the demo does not rebuild OEM CAD.
+

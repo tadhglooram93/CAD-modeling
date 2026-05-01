@@ -1,0 +1,79 @@
+{
+  "dataset": "DrivAerML",
+  "dataset_version": "neashton/drivaerml-main",
+  "created_at": "2026-04-30T20:35:46+00:00",
+  "raw_dir": "data/raw/drivaerml",
+  "row_count": 500,
+  "columns": [
+    "geo_param_run",
+    "geo_param_vehicle_length",
+    "geo_param_vehicle_width",
+    "geo_param_vehicle_height",
+    "geo_param_front_overhang",
+    "geo_param_front_planview",
+    "geo_param_hood_angle",
+    "geo_param_approach_angle",
+    "geo_param_windscreen_angle",
+    "geo_param_greenhouse_tapering",
+    "geo_param_backlight_angle",
+    "geo_param_decklid_height",
+    "geo_param_rearend_tapering",
+    "geo_param_rear_overhang",
+    "geo_param_rear_diffusor_angle",
+    "geo_param_vehicle_ride_height",
+    "geo_param_vehicle_pitch",
+    "run_id",
+    "force_run",
+    "force_cd",
+    "force_cl",
+    "force_clf",
+    "force_clr",
+    "force_cs",
+    "force_constref_run",
+    "force_constref_cd",
+    "force_constref_cl",
+    "force_constref_clf",
+    "force_constref_clr",
+    "force_constref_cs",
+    "source_dataset",
+    "dataset_version",
+    "ingested_at",
+    "source_file_count",
+    "source_files_json",
+    "cd",
+    "cl",
+    "cs"
+  ],
+  "source_files": [
+    {
+      "path": "data/raw/drivaerml/LICENSE.txt",
+      "sha256": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5",
+      "size_bytes": 20138
+    },
+    {
+      "path": "data/raw/drivaerml/README.md",
+      "sha256": "d0d8074db1d26b787ed35fb419339600a2609b8fbee82edb37fa26653cf2bab9",
+      "size_bytes": 7324
+    },
+    {
+      "path": "data/raw/drivaerml/download_manifest.jsonl",
+      "sha256": "f605f3fa5a9d86b1abe6808d0a0fe73a2ddbe80aba34da42d98b28b684623514",
+      "size_bytes": 1164
+    },
+    {
+      "path": "data/raw/drivaerml/force_mom_all.csv",
+      "sha256": "360d0ea616ce5dec4c23f400e1d2e3436fcfab3837a5428688effd95f8f61dd8",
+      "size_bytes": 33942
+    },
+    {
+      "path": "data/raw/drivaerml/force_mom_constref_all.csv",
+      "sha256": "4e9e003da38ccdcacad359451079888361eae221d3c8dad7fd5682250d257865",
+      "size_bytes": 33947
+    },
+    {
+      "path": "data/raw/drivaerml/geo_parameters_all.csv",
+      "sha256": "2d4e8b3f166d1facab2a38821af2c3cc1dbba47cfbb7bf0814e3e0bf1fe3e829",
+      "size_bytes": 77574
+    }
+  ]
+}

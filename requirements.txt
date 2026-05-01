@@ -1,0 +1,17 @@
+pandas
+numpy
+scikit-learn
+xgboost
+matplotlib
+trimesh
+pyvista
+pyglet>=2
+streamlit
+pydantic
+joblib
+pytest
+pyarrow
+PyYAML
+huggingface_hub
+shap
+ruff

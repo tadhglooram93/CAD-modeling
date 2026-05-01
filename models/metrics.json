@@ -1,0 +1,49 @@
+{
+  "target": "cd",
+  "row_count": 484,
+  "feature_count": 25,
+  "feature_columns": [
+    "geo_param_run",
+    "geo_param_vehicle_length",
+    "geo_param_vehicle_width",
+    "geo_param_vehicle_height",
+    "geo_param_front_overhang",
+    "geo_param_front_planview",
+    "geo_param_hood_angle",
+    "geo_param_approach_angle",
+    "geo_param_windscreen_angle",
+    "geo_param_greenhouse_tapering",
+    "geo_param_backlight_angle",
+    "geo_param_decklid_height",
+    "geo_param_rearend_tapering",
+    "geo_param_rear_overhang",
+    "geo_param_rear_diffusor_angle",
+    "geo_param_vehicle_ride_height",
+    "geo_param_vehicle_pitch",
+    "length_to_width",
+    "height_to_width",
+    "wheelbase_proxy",
+    "wheelbase_to_length",
+    "frontal_area_proxy",
+    "overhang_total_proxy",
+    "overhang_front_proxy",
+    "overhang_rear_proxy"
+  ],
+  "models": {
+    "mean": {
+      "mae": 0.013837046072085028,
+      "rmse": 0.017079290400185264,
+      "r2": -0.024955836994104974
+    },
+    "ridge": {
+      "mae": 0.004650930193312404,
+      "rmse": 0.0060234473778904285,
+      "r2": 0.8725159804084412
+    },
+    "xgboost": {
+      "mae": 0.00381949894834499,
+      "rmse": 0.004588512560380765,
+      "r2": 0.9260208466246947
+    }
+  }
+}
